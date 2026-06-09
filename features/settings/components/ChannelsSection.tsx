@@ -108,6 +108,7 @@ function getSupabaseProjectRef(): string {
 }
 
 const WEBHOOK_FUNCTION_MAP: Record<string, string> = {
+  'evolution': 'messaging-webhook-evolution',
   'z-api': 'messaging-webhook-zapi',
   'meta-cloud': 'messaging-webhook-meta',
   'meta': 'messaging-webhook-meta',
@@ -127,6 +128,17 @@ const WEBHOOK_CONFIGS: Record<string, {
   fields: WebhookField[];
   toggles?: string[];
 }> = {
+  'evolution': {
+    title: 'Configurar Webhook no Evolution API',
+    where: 'Acesse seu painel Evolution API → Instância → aba Webhook',
+    fields: [
+      { label: 'Webhook URL', description: 'Cole a URL abaixo no campo de webhook', required: true },
+    ],
+    toggles: [
+      'Ative os eventos: MESSAGES_UPSERT, MESSAGES_UPDATE, CONNECTION_UPDATE, SEND_MESSAGE',
+      'Deixe o Webhook Global desativado — use o webhook por instância',
+    ],
+  },
   'z-api': {
     title: 'Configurar Webhooks no Z-API',
     where: 'Acesse developer.z-api.io → Sua instância → aba "Webhooks e configurações gerais"',
