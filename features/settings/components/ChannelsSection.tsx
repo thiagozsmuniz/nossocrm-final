@@ -35,6 +35,8 @@ import { ConfirmDialog as ConfirmModal } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/utils/cn';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query/queryKeys';
 import {
   useChannelsQuery,
   useDeleteChannelMutation,
@@ -704,6 +706,8 @@ export function ChannelsSection() {
   const { profile } = useAuth();
   const { addToast } = useToast();
 
+  const queryClient = useQueryClient();
+
   // Queries
   const { data: channels = [], isLoading } = useChannelsQuery();
   const { data: routingRules = [], isLoading: routingLoading } = useLeadRoutingRules();
@@ -772,10 +776,31 @@ export function ChannelsSection() {
         channelId: channel.id,
         connect: !isConnected,
       });
-      addToast(
-        isConnected ? 'Canal desconectado.' : 'Conectando canal...',
-        'success'
-      );
+
+      if (!isConnected) {
+        // For providers that may already be connected (e.g. Evolution API),
+        // immediately check the real status instead of waiting for a webhook.
+        addToast('Verificando conexão...', 'success');
+        try {
+          const res = await fetch(`/api/messaging/channels/${channel.id}/sync-status`, {
+            method: 'POST',
+          });
+          if (res.ok) {
+            const data = await res.json() as { status: string };
+            if (data.status === 'connected') {
+              addToast('Canal conectado com sucesso!', 'success');
+              return;
+            }
+          }
+        } catch {
+          // Fail silently — webhook will update status when it arrives
+        }
+        // Invalidate to reflect any DB changes from sync-status
+        void queryClient.invalidateQueries({ queryKey: queryKeys.messagingChannels.all });
+        addToast('Conectando canal...', 'success');
+      } else {
+        addToast('Canal desconectado.', 'success');
+      }
     } catch {
       addToast('Erro ao alterar status do canal.', 'error');
     }
