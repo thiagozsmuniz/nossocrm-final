@@ -17,7 +17,7 @@ import {
   useUpdateDeal,
 } from '@/lib/query/hooks/useDealsQuery';
 import { useDefaultBoard } from '@/lib/query/hooks/useBoardsQuery';
-import { useRealtimeSync } from '@/lib/realtime/useRealtimeSync';
+import { useRealtimeSync, useRealtimeSyncMessaging } from '@/lib/realtime/useRealtimeSync';
 import { useHiddenSuggestionIds, useRecordSuggestionInteraction } from '@/lib/query/hooks/useAISuggestionsQuery';
 import { SuggestionType } from '@/lib/supabase/aiSuggestions';
 import { isDebugMode, generateFakeContacts, fakeDeal } from '@/lib/debug';
@@ -74,6 +74,7 @@ export const useInboxController = () => {
   // Enable realtime sync
   useRealtimeSync('activities');
   useRealtimeSync('deals');
+  useRealtimeSyncMessaging();
 
   const activeBoardId = defaultBoard?.id || '';
   const activeBoard = defaultBoard;
