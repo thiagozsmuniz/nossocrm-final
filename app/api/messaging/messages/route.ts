@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createStaticAdminClient } from '@/lib/supabase/staticAdminClient';
 // Import from main module to ensure providers are registered
@@ -120,7 +120,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fire-and-forget: send to provider without blocking the response.
+    // Deferred send: runs after the response is returned.
+    // Uses after() to guarantee execution even after the response is sent.
     // Uses createStaticAdminClient (service role, no request context needed)
     // because the standard createClient depends on next/headers which is
     // unavailable after the response has been sent.
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
     const messageId = dbMessage.id;
     const channelId = channel.id;
 
-    void (async () => {
+    after(async () => {
       const supabaseAdmin = createStaticAdminClient();
       try {
         await supabaseAdmin
@@ -189,8 +190,17 @@ export async function POST(request: NextRequest) {
         }
       } catch (err: unknown) {
         console.error('[messaging/messages] background send failed:', err instanceof Error ? err.message : err, err instanceof Error ? err.stack : '');
+        // Update message status to failed so the user can see the error and retry
+        await createStaticAdminClient()
+          .from('messaging_messages')
+          .update({
+            status: 'failed',
+            error_message: err instanceof Error ? err.message : 'Unknown error',
+            failed_at: new Date().toISOString(),
+          })
+          .eq('id', messageId);
       }
-    })();
+    });
 
     // Respond immediately with pending message — UI updates via realtime
     return NextResponse.json(transformMessage(dbMessage as DbMessagingMessage));
